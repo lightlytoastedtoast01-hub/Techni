@@ -1,0 +1,181 @@
+{
+  "player": {
+    "x": 9.65954886148621,
+    "y": 3.9950507609204764,
+    "angle": -3.0787243458974904,
+    "hp": 52,
+    "move_velocity_x": -3.193678204033769,
+    "move_velocity_y": -0.20104608695431536,
+    "turn_velocity": 0.0
+  },
+  "weapon": {
+    "gun_index": 4,
+    "reserve_ammo": 53,
+    "mag_ammo": 8,
+    "reload_timer": 0.0
+  },
+  "world": {
+    "map_layout": [
+      "################",
+      "#####...##.....#",
+      "###............#",
+      "###............#",
+      "###............#",
+      "####.........###",
+      "####.........###",
+      "####....########",
+      "####....########",
+      "################"
+    ],
+    "map_size_name": "small",
+    "level_index": 15,
+    "kill_count": 283,
+    "spawn_index": 4,
+    "spawn_timer": 2.47032420800042,
+    "loot_boxes": [
+      {
+        "id": 1,
+        "x": 8.636202908294022,
+        "y": 4.206663886070123,
+        "type": "ammo"
+      }
+    ],
+    "collected_loot_ids": [
+      2
+    ],
+    "next_loot_id": 3,
+    "zombies": [
+      {
+        "x": 8.636202908294022,
+        "y": 4.206663886070123,
+        "hp": -11,
+        "max_hp": 45,
+        "cooldown": 0.0,
+        "alive": false,
+        "type": "walker",
+        "speed": 1.0,
+        "damage": 18,
+        "color_bias": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "x": 12.101494552668532,
+        "y": 4.414882992742237,
+        "hp": -26,
+        "max_hp": 30,
+        "cooldown": 0.0,
+        "alive": false,
+        "type": "runner",
+        "speed": 1.65,
+        "damage": 12,
+        "color_bias": [
+          18,
+          18,
+          -12
+        ]
+      },
+      {
+        "x": 8.557984523518776,
+        "y": 3.814979883245936,
+        "hp": -14,
+        "max_hp": 70,
+        "cooldown": 0.0,
+        "alive": false,
+        "type": "brute",
+        "speed": 0.72,
+        "damage": 28,
+        "color_bias": [
+          22,
+          -10,
+          -10
+        ]
+      },
+      {
+        "x": 11.455507470959782,
+        "y": 3.088315971121635,
+        "hp": 45,
+        "max_hp": 45,
+        "cooldown": 0.0,
+        "alive": true,
+        "type": "walker",
+        "speed": 1.0,
+        "damage": 18,
+        "color_bias": [
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "inventory": [
+    {
+      "type": "ammo",
+      "count": 5,
+      "ammo_gain": 23
+    },
+    {
+      "type": "materials",
+      "count": 5
+    },
+    {
+      "type": "materials",
+      "count": 5
+    },
+    {
+      "type": "ammo",
+      "count": 5,
+      "ammo_gain": 22
+    },
+    {
+      "type": "food",
+      "count": 5,
+      "heal": 19
+    },
+    {
+      "type": "food",
+      "count": 5,
+      "heal": 18
+    },
+    {
+      "type": "ammo",
+      "count": 4,
+      "ammo_gain": 16
+    },
+    {
+      "type": "materials",
+      "count": 5
+    },
+    {
+      "type": "materials",
+      "count": 5
+    },
+    {
+      "type": "materials",
+      "count": 5
+    },
+    {
+      "type": "food",
+      "count": 2,
+      "heal": 28
+    },
+    {
+      "type": "materials",
+      "count": 5
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "meta": {
+    "format": "dpy",
+    "version": 1,
+    "saved_at": 1774542304.074742
+  }
+}

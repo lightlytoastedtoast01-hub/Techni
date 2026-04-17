@@ -1,0 +1,541 @@
+VOICE RECOGNITION CODE
+
+
+
+import os
+import queue
+import json
+import time
+import sounddevice as sd
+from vosk import Model, KaldiRecognizer
+from difflib import get_close_matches
+
+# ==========================
+# COMMANDS + SYNONYMS
+# ==========================
+COMMANDS = {
+    "OPEN_BROWSER": [
+        "open browser", "open browsing", "launch browser", "launch web",
+        "google it", "browse web", "start browser", "open web"
+    ],
+    "CLOSE_BROWSER": [
+        "close browser", "exit browser", "quit browser",
+        "shut down browser", "turn off browser"
+    ],
+    "PLAY_MUSIC": [
+        "play music", "start music", "resume music",
+        "turn on music"
+    ],
+    "PAUSE_MUSIC": [
+        "pause music", "stop music", "hold music"
+    ],
+    "VOLUME_UP": [
+        "volume up", "increase volume", "raise volume",
+        "turn volume up", "louder", "crank volume"
+    ],
+    "VOLUME_DOWN": [
+        "volume down", "decrease volume", "lower volume",
+        "turn volume down", "quieter"
+    ]
+}
+
+# ==========================
+# INTENT DETECTION
+# ==========================
+def detect_intent(text: str) -> str:
+    text = text.lower().strip()
+
+    # Exact phrase / keyword match
+    for intent, phrases in COMMANDS.items():
+        for phrase in phrases:
+            if all(word in text for word in phrase.split()):
+                return intent
+
+    # Fuzzy matching fallback
+    all_phrases = [phrase for phrases in COMMANDS.values() for phrase in phrases]
+    matches = get_close_matches(text, all_phrases, n=1, cutoff=0.6)
+    if matches:
+        for intent, phrases in COMMANDS.items():
+            if matches[0] in phrases:
+                return intent
+
+    return "UNKNOWN"
+
+# ==========================
+# AUDIO CONFIG
+# ==========================
+samplerate = 16000
+blocksize = 8000
+q = queue.Queue()
+
+def callback(indata, frames, time_info, status):
+    if status:
+        print(f"Audio status: {status}")
+    q.put(bytes(indata))
+
+# ==========================
+# MODEL PATH
+# ==========================
+script_dir = os.path.dirname(os.path.realpath(__file__))
+model_path = os.path.join(script_dir, "vosk-model-small-en-us-0.15")
+
+if not os.path.exists(model_path):
+    raise FileNotFoundError(
+        f"Model folder not found at {model_path}. "
+        f"Download and unzip 'vosk-model-small-en-us-0.15' here."
+    )
+
+print(f"Loading Vosk model from: {model_path}")
+model = Model(model_path)
+
+# ==========================
+# WAKEWORD LIST -> JSON ARRAY
+# ==========================
+wakeword_list_path = os.path.join(script_dir, "wakewords.list")
+if not os.path.exists(wakeword_list_path):
+    raise FileNotFoundError(
+        f"wakewords.list not found at {wakeword_list_path}. "
+        f"Create it and put your wake words there."
+    )
+
+wake_phrases = []
+with open(wakeword_list_path, "r", encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        # Expect lines like: "hey pen" 1.5
+        if '"' in line:
+            first_quote = line.find('"')
+            last_quote = line.rfind('"')
+            if first_quote != -1 and last_quote > first_quote:
+                phrase = line[first_quote + 1:last_quote].strip()
+                if phrase:
+                    wake_phrases.append(phrase)
+
+if not wake_phrases:
+    raise ValueError(
+        "wakewords.list did not yield any phrases. "
+        "Make sure lines look like: \"hey pen\" 1.5"
+    )
+
+wakewords_json = json.dumps(wake_phrases)
+print("Using wake words:", wake_phrases)
+
+# ==========================
+# RECOGNIZERS
+# ==========================
+keyword_recognizer = KaldiRecognizer(model, samplerate, wakewords_json)
+command_recognizer = KaldiRecognizer(model, samplerate)
+
+# ==========================
+# MICROPHONE INDEX
+# ==========================
+mic_index = 3
+
+# ==========================
+# STATE
+# ==========================
+listening_for_command = False
+current_command = ""
+last_speech_time = 0
+COMMAND_TIMEOUT = 5  # seconds
+
+print("======================================")
+print(" Voice Assistant with Wake Word (Vosk)")
+print("======================================")
+print("Using microphone index:", mic_index)
+print("Listening for wake word(s) from wakewords.list...")
+print("After wake word is detected, speak your command.")
+print("--------------------------------------")
+
+# ==========================
+# MAIN LOOP
+# ==========================
+def main():
+    global listening_for_command, current_command, last_speech_time
+
+    with sd.RawInputStream(
+        samplerate=samplerate,
+        blocksize=blocksize,
+        dtype="int16",
+        channels=1,
+        callback=callback,
+        device=mic_index
+    ):
+        while True:
+            data = q.get()
+
+            # ==========================
+            # WAKE WORD MODE
+            # ==========================
+            if not listening_for_command:
+                if keyword_recognizer.AcceptWaveform(data):
+                    kw_result = json.loads(keyword_recognizer.Result())
+                    kw_text = kw_result.get("text", "").strip().lower()
+                    if kw_text:
+                        print(f"[Wake] Detected: '{kw_text}'")
+                        listening_for_command = True
+                        current_command = ""
+                        last_speech_time = time.time()
+                        print("Wake word detected! Listening for your command...")
+                continue
+
+            # ==========================
+            # COMMAND MODE
+            # ==========================
+            if command_recognizer.AcceptWaveform(data):
+                result = json.loads(command_recognizer.Result())
+                text = result.get("text", "").strip().lower()
+
+                if text:
+                    last_speech_time = time.time()
+
+                    if current_command:
+                        current_command += " " + text
+                    else:
+                        current_command = text
+
+                    intent = detect_intent(current_command)
+
+                    if intent != "UNKNOWN":
+                        print(f"[Command] Heard: {current_command}")
+                        print(f"[Command] Intent: {intent}")
+                        print("--------------------------------------")
+                        listening_for_command = False
+                        current_command = ""
+                    else:
+                        print(f"[Command] Unrecognized so far: '{current_command}'")
+
+            else:
+                partial = json.loads(command_recognizer.PartialResult())
+                partial_text = partial.get("partial", "").strip().lower()
+
+                if partial_text:
+                    last_speech_time = time.time()
+                    current_command = partial_text
+                    print(f"[Partial command] {current_command}")
+
+            # ==========================
+            # TIMEOUT CHECK
+            # ==========================
+            if listening_for_command and time.time() - last_speech_time > COMMAND_TIMEOUT:
+                print("[Timeout] No speech detected for "+str(COMMAND_TIMEOUT)+" seconds. Returning to wake mode.")
+                listening_for_command = False
+                current_command = ""
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nExiting on user interrupt.")
+
+
+
+UI CODE
+
+
+
+import pygame
+import math
+
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+clock = pygame.time.Clock()
+
+raw_strokes = []
+smooth_strokes = []
+
+current_raw = []
+current_smooth = []
+
+mouse_down = False
+running = True
+
+# Lazy brush stabilization
+brush_x = None
+brush_y = None
+radius = 50       # Lazy brush radius
+follow = 0.15     # Speed outside radius
+slow_factor = 0.25  # Speed factor inside radius
+
+
+# Catmull-Rom spline
+def catmull_rom(points, steps=8):
+    if len(points) < 4:
+        return points
+    curve = []
+    for i in range(1, len(points)-2):
+        p0 = points[i-1]
+        p1 = points[i]
+        p2 = points[i+1]
+        p3 = points[i+2]
+        for j in range(steps):
+            t = j / steps
+            t2 = t*t
+            t3 = t2*t
+            x = 0.5 * ((2*p1[0]) + (-p0[0] + p2[0])*t + (2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2 + (-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3)
+            y = 0.5 * ((2*p1[1]) + (-p0[1] + p2[1])*t + (2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2 + (-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)
+            curve.append((x, y))
+    curve.append(points[-2])
+    curve.append(points[-1])
+    return curve
+
+# Velocity-based line drawing
+def draw_stroke(surface, points):
+    if len(points) < 2:
+        return
+    last_point = points[0]
+    last_time = pygame.time.get_ticks() / 1000
+    for i in range(1, len(points)):
+        x, y = points[i]
+        now = pygame.time.get_ticks() / 1000
+        dt = now - last_time
+        dist = math.hypot(x-last_point[0], y-last_point[1])
+        velocity = dist / max(dt, 0.001)
+        # slow = thick, fast = thin
+        width = max(1, min(6, 6 - velocity*0.05))
+        pygame.draw.aaline(surface, (0,0,0), last_point, (x,y))
+        last_point = (x,y)
+        last_time = now
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_down = True
+            current_raw = []
+            current_smooth = []
+            brush_x, brush_y = None, None
+
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            mouse_down = False
+            if current_smooth:
+                raw_strokes.append(current_raw)
+                smooth_strokes.append(current_smooth)
+
+    if mouse_down:
+        raw_x, raw_y = pygame.mouse.get_pos()
+        current_raw.append((raw_x, raw_y))
+
+        if brush_x is None:
+            brush_x, brush_y = raw_x, raw_y
+
+        dx = raw_x - brush_x
+        dy = raw_y - brush_y
+        dist = math.hypot(dx, dy)
+
+        # Move brush: slower inside radius, faster outside
+        if dist > radius:
+            brush_x += dx * follow
+            brush_y += dy * follow
+        else:
+            brush_x += dx * follow * slow_factor
+            brush_y += dy * follow * slow_factor
+
+        current_smooth.append((brush_x, brush_y))
+
+    screen.fill((255,255,255))
+
+    # Finished strokes
+    for stroke in smooth_strokes:
+        if len(stroke) > 3:
+            curve = catmull_rom(stroke, 10)
+            draw_stroke(screen, curve)
+
+    # Active stroke
+    if len(current_smooth) > 3:
+        curve = catmull_rom(current_smooth, 10)
+        draw_stroke(screen, curve)
+
+
+    pygame.display.flip()
+    clock.tick(240)
+
+pygame.quit()
+
+
+
+
+BLE CONNECTION SCRIPT
+
+
+
+import asyncio
+from bleak import BleakScanner, BleakClient
+
+BLE_MAC = "f2:4f:18:a6:f7:76"
+DEVICE_NAME = "Arduino"
+
+CHAR_UUID_X = "19B10001-E8F2-537E-4F6C-D104768A1214"
+CHAR_UUID_Y = "19B10002-E8F2-537E-4F6C-D104768A1214"
+CHAR_UUID_Z = "19B10003-E8F2-537E-4F6C-D104768A1214"
+
+
+async def connect_device():
+    # Try MAC address first
+    try:
+        print("Trying MAC address...")
+        client = BleakClient(BLE_MAC)
+        await client.connect()
+
+        if client.is_connected:
+            print("Connected using MAC address")
+            return client
+
+    except Exception as e:
+        print("MAC connection failed:", e)
+
+    # Fallback to scanning by name
+    print("Scanning for device by name...")
+
+    devices = await BleakScanner.discover()
+
+    for d in devices:
+        if d.name == DEVICE_NAME:
+            print("Found device:", d)
+            client = BleakClient(d.address)
+            await client.connect()
+            return client
+
+    raise Exception("Device not found")
+
+
+async def read_imu():
+    client = await connect_device()
+
+    async with client:
+        print("Connected!")
+
+        while True:
+            x = (await client.read_gatt_char(CHAR_UUID_X)).decode()
+            y = (await client.read_gatt_char(CHAR_UUID_Y)).decode()
+            z = (await client.read_gatt_char(CHAR_UUID_Z)).decode()
+
+            print(f"X:{x}  Y:{y}  Z:{z}")
+
+            await asyncio.sleep(0.05)
+
+
+if __name__ == "__main__":
+    asyncio.run(read_imu())
+
+
+
+ARDUINO NANO 33 BLE PART
+
+
+
+#include <ArduinoBLE.h>
+#include <Arduino_BMI270_BMM150.h>
+
+// BLE Service
+BLEService imuService("19B10000-E8F2-537E-4F6C-D104768A1214");
+
+// Characteristics for X, Y, Z acceleration
+BLEStringCharacteristic accelXCharacteristic(
+  "19B10001-E8F2-537E-4F6C-D104768A1214",
+  BLERead | BLENotify,
+  60
+);
+
+BLEStringCharacteristic accelYCharacteristic(
+  "19B10002-E8F2-537E-4F6C-D104768A1214",
+  BLERead | BLENotify,
+  60
+);
+
+BLEStringCharacteristic accelZCharacteristic(
+  "19B10003-E8F2-537E-4F6C-D104768A1214",
+  BLERead | BLENotify,
+  60
+);
+
+void setup() {
+  Serial.begin(9600);
+
+  if (!BLE.begin()) {
+    Serial.println("BLE failed to start!");
+    while (1);
+  }
+
+  if (!IMU.begin()) {
+    Serial.println("IMU failed to start!");
+    while (1);
+  }
+
+  String mac = BLE.address();  // "AA:BB:CC:DD:EE:FF"
+
+  byte macBytes[6];
+  int values[6];
+
+  // Parse the MAC string
+  sscanf(mac.c_str(), "%x:%x:%x:%x:%x:%x",
+        &values[0], &values[1], &values[2],
+        &values[3], &values[4], &values[5]);
+
+  for (int i = 0; i < 6; i++) {
+    macBytes[i] = (byte)values[i];
+  }
+
+  // Put MAC in manufacturer data
+  BLE.setManufacturerData(macBytes, 6);
+
+  // Build device name with MAC
+  String deviceName = "Arduino";
+
+  BLE.setLocalName(deviceName.c_str());
+  BLE.setAdvertisedService(imuService);
+
+  imuService.addCharacteristic(accelXCharacteristic);
+  imuService.addCharacteristic(accelYCharacteristic);
+  imuService.addCharacteristic(accelZCharacteristic);
+  
+
+  BLE.addService(imuService);
+
+  BLE.advertise();
+
+  Serial.print("BLE IMU Peripheral started as: ");
+  Serial.println(deviceName);
+  Serial.print("MAC Address: ");
+  Serial.println(mac);
+
+  Serial.print("Accelerometer sample rate = ");
+  Serial.print(IMU.accelerationSampleRate());
+  Serial.println(" Hz");
+}
+
+void loop() {
+  BLEDevice central = BLE.central();
+
+  if (central) {
+    Serial.print("Connected to: ");
+    Serial.println(central.address());
+
+    while (central.connected()) {
+      float x, y, z;
+
+      BLE.poll();
+
+      if (IMU.accelerationAvailable()) {
+        IMU.readAcceleration(x, y, z);
+
+        accelXCharacteristic.writeValue(String(x));
+        accelYCharacteristic.writeValue(String(y));
+        accelZCharacteristic.writeValue(String(z));
+
+        Serial.print(x);
+        Serial.print("\t");
+        Serial.print(y);
+        Serial.print("\t");
+        Serial.println(z);
+      }
+    }
+
+    Serial.print("Disconnected from: ");
+    Serial.println(central.address());
+  }
+}
