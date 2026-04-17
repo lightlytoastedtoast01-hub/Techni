@@ -10,8 +10,11 @@ We aim to make art more accessible for everyone.
 We are from Robinson School, Puerto Rico
 
 When dividing the tasks within the team, we were considering strengths and talents within the group. All of us oversaw managing and directing each other so that we could all create the project in equal part. 
+
 Alexandra Fleming: Been in robotics for 3 years: Works with ideas, sketching, research, planning, construction, and hardware. 
+
 Amanda Cordero: Been in robotics for 3 years: Works with ideas, sketching, research, planning, construction, and hardware. 
+
 Jonas Ilse: Been in robotics for 4 years: Works with coding, software, construction, and hardware. 
 
 
