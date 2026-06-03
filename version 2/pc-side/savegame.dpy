@@ -1,17 +1,17 @@
 {
   "player": {
-    "x": 9.65954886148621,
-    "y": 3.9950507609204764,
-    "angle": -3.0787243458974904,
-    "hp": 52,
-    "move_velocity_x": -3.193678204033769,
-    "move_velocity_y": -0.20104608695431536,
+    "x": 9.976439980658949,
+    "y": 3.0455738600995854,
+    "angle": -3.9542903564038894,
+    "hp": 70,
+    "move_velocity_x": -0.0,
+    "move_velocity_y": 0.0,
     "turn_velocity": 0.0
   },
   "weapon": {
     "gun_index": 4,
     "reserve_ammo": 53,
-    "mag_ammo": 8,
+    "mag_ammo": 3,
     "reload_timer": 0.0
   },
   "world": {
@@ -29,18 +29,12 @@
     ],
     "map_size_name": "small",
     "level_index": 15,
-    "kill_count": 283,
-    "spawn_index": 4,
-    "spawn_timer": 2.47032420800042,
-    "loot_boxes": [
-      {
-        "id": 1,
-        "x": 8.636202908294022,
-        "y": 4.206663886070123,
-        "type": "ammo"
-      }
-    ],
+    "kill_count": 285,
+    "spawn_index": 6,
+    "spawn_timer": 3.7637283329997464,
+    "loot_boxes": [],
     "collected_loot_ids": [
+      1,
       2
     ],
     "next_loot_id": 3,
@@ -94,12 +88,12 @@
         ]
       },
       {
-        "x": 11.455507470959782,
-        "y": 3.088315971121635,
-        "hp": 45,
+        "x": 9.008755801175061,
+        "y": 5.506917420661962,
+        "hp": -11,
         "max_hp": 45,
         "cooldown": 0.0,
-        "alive": true,
+        "alive": false,
         "type": "walker",
         "speed": 1.0,
         "damage": 18,
@@ -108,6 +102,38 @@
           0,
           0
         ]
+      },
+      {
+        "x": 10.63117730126849,
+        "y": 3.028829408152671,
+        "hp": -26,
+        "max_hp": 30,
+        "cooldown": 0.0,
+        "alive": false,
+        "type": "runner",
+        "speed": 1.65,
+        "damage": 12,
+        "color_bias": [
+          18,
+          18,
+          -12
+        ]
+      },
+      {
+        "x": 11.725081421488495,
+        "y": 1.9298050191142595,
+        "hp": 70,
+        "max_hp": 70,
+        "cooldown": 0.0,
+        "alive": true,
+        "type": "brute",
+        "speed": 0.72,
+        "damage": 28,
+        "color_bias": [
+          22,
+          -10,
+          -10
+        ]
       }
     ]
   },
@@ -115,7 +141,7 @@
     {
       "type": "ammo",
       "count": 5,
-      "ammo_gain": 23
+      "ammo_gain": 24
     },
     {
       "type": "materials",
@@ -128,7 +154,7 @@
     {
       "type": "ammo",
       "count": 5,
-      "ammo_gain": 22
+      "ammo_gain": 21
     },
     {
       "type": "food",
@@ -138,11 +164,11 @@
     {
       "type": "food",
       "count": 5,
-      "heal": 18
+      "heal": 21
     },
     {
       "type": "ammo",
-      "count": 4,
+      "count": 5,
       "ammo_gain": 16
     },
     {
@@ -157,11 +183,7 @@
       "type": "materials",
       "count": 5
     },
-    {
-      "type": "food",
-      "count": 2,
-      "heal": 28
-    },
+    null,
     {
       "type": "materials",
       "count": 5
@@ -176,6 +198,6 @@
   "meta": {
     "format": "dpy",
     "version": 1,
-    "saved_at": 1774542304.074742
+    "saved_at": 1777900393.246304
   }
 }
